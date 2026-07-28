@@ -5,6 +5,7 @@
  * Features:
  * - 3-box Leitner system (Daily, Every 2 days, Every 4 days)
  * - Create, review, and manage flashcards
+ * - Subject grouping for cards
  * - Import/export functionality
  * - Full W3C accessibility compliance
  * - No sensitive student data collection
@@ -23,11 +24,15 @@ const AppState = {
     // Flashcards storage
     flashcards: [],
     
+    // Subjects storage
+    subjects: [],
+    
     // Current mode
     currentMode: 'create',
     
     // Review state
     currentBox: null,
+    currentSubject: 'all',
     currentCardIndex: 0,
     reviewCards: [],
     showingAnswer: false
@@ -38,15 +43,18 @@ const elements = {
     // Navigation
     modeCreateBtn: document.getElementById('mode-create'),
     modeReviewBtn: document.getElementById('mode-review'),
+    modeSubjectsBtn: document.getElementById('mode-subjects'),
     modeImportExportBtn: document.getElementById('import-export'),
     
     // Sections
     createSection: document.getElementById('create-section'),
     reviewSection: document.getElementById('review-section'),
+    subjectsSection: document.getElementById('subjects-section'),
     importExportSection: document.getElementById('import-export-section'),
     
     // Create Form
     cardForm: document.getElementById('card-form'),
+    subjectSelect: document.getElementById('subject-select'),
     questionInput: document.getElementById('question'),
     answerInput: document.getElementById('answer'),
     addCardBtn: document.getElementById('add-card'),
@@ -54,6 +62,7 @@ const elements = {
     cardList: document.getElementById('card-list'),
     noCardsMessage: document.getElementById('no-cards'),
     cardsContainer: document.getElementById('cards-container'),
+    filterSubject: document.getElementById('filter-subject'),
     
     // Review
     boxButtons: document.querySelectorAll('.box-button'),
@@ -62,6 +71,7 @@ const elements = {
     noCardsReview: document.getElementById('no-cards-review'),
     reviewCard: document.getElementById('review-card'),
     reviewQuestion: document.getElementById('review-question'),
+    reviewSubjectDisplay: document.getElementById('review-subject-display'),
     reviewAnswer: document.getElementById('review-answer'),
     cardFront: document.querySelector('.card-front'),
     cardBack: document.querySelector('.card-back'),
@@ -71,6 +81,16 @@ const elements = {
     reviewProgress: document.getElementById('review-progress'),
     currentCardSpan: document.getElementById('current-card'),
     totalCardsSpan: document.getElementById('total-cards'),
+    reviewSubjectFilter: document.getElementById('review-subject-filter'),
+    
+    // Subjects Management
+    subjectForm: document.getElementById('subject-form'),
+    newSubjectName: document.getElementById('new-subject-name'),
+    newSubjectColor: document.getElementById('new-subject-color'),
+    addSubjectBtn: document.getElementById('add-subject-btn'),
+    subjectsContainer: document.getElementById('subjects-container'),
+    noSubjectsMessage: document.getElementById('no-subjects'),
+    subjectNameError: document.getElementById('subject-name-error'),
     
     // Import/Export
     exportBtn: document.getElementById('export-btn'),
@@ -81,33 +101,47 @@ const elements = {
     
     // Error messages
     questionError: document.getElementById('question-error'),
-    answerError: document.getElementById('answer-error')
+    answerError: document.getElementById('answer-error'),
+    subjectError: document.getElementById('subject-error')
 };
 
 // Initialize the application
 function init() {
-    loadFlashcards();
+    loadData();
     setupEventListeners();
     updateUI();
+    renderSubjectDropdowns();
     renderCardList();
 }
 
-// Load flashcards from localStorage
-function loadFlashcards() {
+// Load data from localStorage
+function loadData() {
     const saved = localStorage.getItem('leitnerFlashcards');
     if (saved) {
         try {
             const data = JSON.parse(saved);
-            // Validate the data structure
+            
+            // Load flashcards
             if (Array.isArray(data.flashcards)) {
                 AppState.flashcards = data.flashcards.map(card => ({
                     id: card.id || generateId(),
                     question: card.question || '',
                     answer: card.answer || '',
-                    box: Math.min(card.box || 0, AppState.boxes.length - 1)
+                    box: Math.min(card.box || 0, AppState.boxes.length - 1),
+                    subject: card.subject || ''
                 }));
             }
-            // Validate boxes configuration
+            
+            // Load subjects
+            if (Array.isArray(data.subjects)) {
+                AppState.subjects = data.subjects.map(subject => ({
+                    id: subject.id || generateId(),
+                    name: subject.name || 'Untitled Subject',
+                    color: subject.color || '#0056b3'
+                }));
+            }
+            
+            // Load boxes configuration
             if (Array.isArray(data.boxes) && data.boxes.length >= 3 && data.boxes.length <= 7) {
                 AppState.boxes = data.boxes.map((box, index) => ({
                     id: index,
@@ -116,21 +150,38 @@ function loadFlashcards() {
                     intervalDays: box.intervalDays || getDefaultIntervalDays(index)
                 }));
             }
+            
+            // If no subjects exist, create a default one
+            if (AppState.subjects.length === 0) {
+                AppState.subjects.push({
+                    id: generateId(),
+                    name: 'General',
+                    color: '#0056b3'
+                });
+            }
+            
         } catch (e) {
-            console.error('Error loading flashcards:', e);
-            // Start with empty data
+            console.error('Error loading data:', e);
+            // Start with defaults
             AppState.flashcards = [];
+            AppState.subjects = [
+                { id: generateId(), name: 'General', color: '#0056b3' }
+            ];
         }
     } else {
-        // First time - initialize with empty flashcards
+        // First time - initialize with defaults
         AppState.flashcards = [];
+        AppState.subjects = [
+            { id: generateId(), name: 'General', color: '#0056b3' }
+        ];
     }
 }
 
-// Save flashcards to localStorage
-function saveFlashcards() {
+// Save data to localStorage
+function saveData() {
     const data = {
         flashcards: AppState.flashcards,
+        subjects: AppState.subjects,
         boxes: AppState.boxes,
         version: '1.0'
     };
@@ -154,26 +205,59 @@ function getDefaultIntervalDays(index) {
     return days[index] || Math.pow(2, index);
 }
 
+// Get subject by ID
+function getSubjectById(id) {
+    return AppState.subjects.find(s => s.id === id);
+}
+
+// Get subject name by ID
+function getSubjectName(id) {
+    const subject = getSubjectById(id);
+    return subject ? subject.name : 'Unknown';
+}
+
+// Get subject color by ID
+function getSubjectColor(id) {
+    const subject = getSubjectById(id);
+    return subject ? subject.color : '#0056b3';
+}
+
 // Setup event listeners
 function setupEventListeners() {
     // Navigation
     elements.modeCreateBtn.addEventListener('click', () => switchMode('create'));
     elements.modeReviewBtn.addEventListener('click', () => switchMode('review'));
+    elements.modeSubjectsBtn.addEventListener('click', () => switchMode('subjects'));
     elements.modeImportExportBtn.addEventListener('click', () => switchMode('import-export'));
     
     // Create form
     elements.cardForm.addEventListener('submit', handleFormSubmit);
     elements.clearFormBtn.addEventListener('click', clearForm);
     
+    // Subject filter for card list
+    elements.filterSubject.addEventListener('change', renderCardList);
+    
     // Box selection for review
     elements.boxButtons.forEach(button => {
-        button.addEventListener('click', () => startReview(parseInt(button.dataset.box)));
+        button.addEventListener('click', () => {
+            AppState.currentBox = parseInt(button.dataset.box);
+            startReview();
+        });
+    });
+    
+    // Subject filter for review
+    elements.reviewSubjectFilter.addEventListener('change', (e) => {
+        AppState.currentSubject = e.target.value;
+        startReview();
     });
     
     // Review actions
     elements.showAnswerBtn.addEventListener('click', showAnswer);
     elements.correctBtn.addEventListener('click', () => handleReviewResponse(true));
     elements.incorrectBtn.addEventListener('click', () => handleReviewResponse(false));
+    
+    // Subjects management
+    elements.subjectForm.addEventListener('submit', handleSubjectFormSubmit);
     
     // Import/Export
     elements.exportBtn.addEventListener('click', exportFlashcards);
@@ -190,16 +274,28 @@ function switchMode(mode) {
     // Update button states
     elements.modeCreateBtn.setAttribute('aria-pressed', mode === 'create');
     elements.modeReviewBtn.setAttribute('aria-pressed', mode === 'review');
+    elements.modeSubjectsBtn.setAttribute('aria-pressed', mode === 'subjects');
     elements.modeImportExportBtn.setAttribute('aria-pressed', mode === 'import-export');
     
     // Update section visibility
     elements.createSection.classList.toggle('active', mode === 'create');
     elements.reviewSection.classList.toggle('active', mode === 'review');
+    elements.subjectsSection.classList.toggle('active', mode === 'subjects');
     elements.importExportSection.classList.toggle('active', mode === 'import-export');
     
     // Reset review state when switching away from review
     if (mode !== 'review') {
         resetReview();
+    }
+    
+    // Refresh subject dropdowns when switching to create mode
+    if (mode === 'create') {
+        renderSubjectDropdowns();
+    }
+    
+    // Refresh subjects list when switching to subjects mode
+    if (mode === 'subjects') {
+        renderSubjectsList();
     }
     
     // Clear import/export messages
@@ -213,8 +309,9 @@ function switchMode(mode) {
     setTimeout(() => {
         const section = mode === 'create' ? elements.createSection :
                        mode === 'review' ? elements.reviewSection :
+                       mode === 'subjects' ? elements.subjectsSection :
                        elements.importExportSection;
-        const firstFocusable = section.querySelector('button, input, textarea, [tabindex]:not([tabindex="-1"])');
+        const firstFocusable = section.querySelector('button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
         if (firstFocusable) {
             firstFocusable.focus();
         }
@@ -236,6 +333,35 @@ function updateCardCounts() {
     });
 }
 
+// Render subject dropdowns
+function renderSubjectDropdowns() {
+    const subjects = [...AppState.subjects];
+    
+    // Sort subjects alphabetically
+    subjects.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Create form subject dropdown
+    const subjectOptions = ['<option value="" disabled selected>Select a subject</option>'];
+    subjects.forEach(subject => {
+        subjectOptions.push(`<option value="${subject.id}">${escapeHtml(subject.name)}</option>`);
+    });
+    elements.subjectSelect.innerHTML = subjectOptions.join('');
+    
+    // Filter dropdown
+    const filterOptions = ['<option value="all">All Subjects</option>'];
+    subjects.forEach(subject => {
+        filterOptions.push(`<option value="${subject.id}">${escapeHtml(subject.name)}</option>`);
+    });
+    elements.filterSubject.innerHTML = filterOptions.join('');
+    
+    // Review subject filter
+    const reviewFilterOptions = ['<option value="all">All Subjects</option>'];
+    subjects.forEach(subject => {
+        reviewFilterOptions.push(`<option value="${subject.id}">${escapeHtml(subject.name)}</option>`);
+    });
+    elements.reviewSubjectFilter.innerHTML = reviewFilterOptions.join('');
+}
+
 // Handle form submission
 function handleFormSubmit(e) {
     e.preventDefault();
@@ -243,16 +369,26 @@ function handleFormSubmit(e) {
     // Clear previous errors
     elements.questionError.textContent = '';
     elements.answerError.textContent = '';
+    elements.subjectError.textContent = '';
     
     // Validate inputs
+    const subjectId = elements.subjectSelect.value;
     const question = elements.questionInput.value.trim();
     const answer = elements.answerInput.value.trim();
     
     let isValid = true;
     
+    if (!subjectId) {
+        elements.subjectError.textContent = 'Please select a subject.';
+        elements.subjectSelect.focus();
+        isValid = false;
+    }
+    
     if (!question) {
         elements.questionError.textContent = 'Please enter a question.';
-        elements.questionInput.focus();
+        if (isValid) {
+            elements.questionInput.focus();
+        }
         isValid = false;
     }
     
@@ -271,11 +407,12 @@ function handleFormSubmit(e) {
         id: generateId(),
         question: question,
         answer: answer,
-        box: 0
+        box: 0,
+        subject: subjectId
     };
     
     AppState.flashcards.push(newCard);
-    saveFlashcards();
+    saveData();
     
     // Update UI
     renderCardList();
@@ -291,12 +428,21 @@ function clearForm() {
     elements.cardForm.reset();
     elements.questionError.textContent = '';
     elements.answerError.textContent = '';
+    elements.subjectError.textContent = '';
     elements.questionInput.focus();
 }
 
 // Render the list of flashcards
 function renderCardList() {
-    if (AppState.flashcards.length === 0) {
+    const filteredSubject = elements.filterSubject.value;
+    
+    let filteredCards = AppState.flashcards;
+    
+    if (filteredSubject !== 'all') {
+        filteredCards = AppState.flashcards.filter(card => card.subject === filteredSubject);
+    }
+    
+    if (filteredCards.length === 0) {
         elements.noCardsMessage.style.display = 'block';
         elements.cardsContainer.innerHTML = '';
         return;
@@ -304,16 +450,24 @@ function renderCardList() {
     
     elements.noCardsMessage.style.display = 'none';
     
-    elements.cardsContainer.innerHTML = AppState.flashcards.map(card => `
+    elements.cardsContainer.innerHTML = filteredCards.map(card => {
+        const subject = getSubjectById(card.subject);
+        const subjectName = subject ? subject.name : 'Unknown';
+        const subjectColor = subject ? subject.color : '#0056b3';
+        
+        return `
         <li class="card-item" tabindex="0">
             <div class="card-header">
-                <span class="card-box box-${card.box}">${AppState.boxes[card.box].name}</span>
+                <div>
+                    <span class="card-box box-${card.box}">${AppState.boxes[card.box].name}</span>
+                    <span class="subject-tag" style="background-color: ${subjectColor}">${escapeHtml(subjectName)}</span>
+                </div>
                 <button class="delete-btn" data-id="${card.id}" aria-label="Delete this flashcard">Delete</button>
             </div>
             <p class="card-question">${escapeHtml(card.question)}</p>
             <p class="card-answer">${escapeHtml(card.answer)}</p>
         </li>
-    `).join('');
+    `}).join('');
     
     // Add event listeners to delete buttons
     document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -328,13 +482,13 @@ function renderCardList() {
 function deleteFlashcard(id) {
     if (confirm('Are you sure you want to delete this flashcard?')) {
         AppState.flashcards = AppState.flashcards.filter(card => card.id !== id);
-        saveFlashcards();
+        saveData();
         renderCardList();
         updateUI();
         
         // If we're in review mode and this card was in the current review set, reset review
         if (AppState.currentMode === 'review' && AppState.reviewCards.some(c => c.id === id)) {
-            resetReview();
+            startReview();
         }
         
         showTemporaryMessage('Flashcard deleted.', 'info');
@@ -348,14 +502,26 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Start review for a specific box
-function startReview(boxIndex) {
-    AppState.currentBox = boxIndex;
+// Start review for current box and subject
+function startReview() {
+    if (AppState.currentBox === null) {
+        elements.noCardsReview.style.display = 'block';
+        elements.reviewCard.classList.add('hidden');
+        elements.reviewProgress.classList.add('hidden');
+        return;
+    }
+    
     AppState.currentCardIndex = 0;
     AppState.showingAnswer = false;
     
-    // Filter cards for this box
-    AppState.reviewCards = AppState.flashcards.filter(card => card.box === boxIndex);
+    // Filter cards for this box and subject
+    let filteredCards = AppState.flashcards.filter(card => card.box === AppState.currentBox);
+    
+    if (AppState.currentSubject !== 'all') {
+        filteredCards = filteredCards.filter(card => card.subject === AppState.currentSubject);
+    }
+    
+    AppState.reviewCards = [...filteredCards];
     
     // Shuffle the cards for random review
     shuffleArray(AppState.reviewCards);
@@ -395,6 +561,13 @@ function updateReviewUI() {
     // Only populate the question initially - answer will be added when shown
     elements.reviewQuestion.textContent = currentCard.question;
     elements.reviewAnswer.textContent = '';
+    
+    // Show subject
+    const subject = getSubjectById(currentCard.subject);
+    const subjectName = subject ? subject.name : 'Unknown';
+    const subjectColor = subject ? subject.color : '#0056b3';
+    elements.reviewSubjectDisplay.textContent = subjectName;
+    elements.reviewSubjectDisplay.style.backgroundColor = subjectColor;
     
     // Reset to question side
     AppState.showingAnswer = false;
@@ -448,7 +621,7 @@ function handleReviewResponse(isCorrect) {
         AppState.flashcards[cardIndex] = { ...currentCard };
     }
     
-    saveFlashcards();
+    saveData();
     updateUI();
     
     // Move to next card
@@ -465,7 +638,6 @@ function handleReviewResponse(isCorrect) {
 
 // Reset review state
 function resetReview() {
-    AppState.currentBox = null;
     AppState.currentCardIndex = 0;
     AppState.reviewCards = [];
     AppState.showingAnswer = false;
@@ -476,12 +648,197 @@ function resetReview() {
     
     // Clear the answer content
     elements.reviewAnswer.textContent = '';
+    elements.reviewSubjectDisplay.textContent = '';
+    elements.reviewSubjectDisplay.style.backgroundColor = '';
+}
+
+// Handle subject form submission
+function handleSubjectFormSubmit(e) {
+    e.preventDefault();
+    
+    // Clear previous error
+    elements.subjectNameError.textContent = '';
+    
+    // Validate input
+    const name = elements.newSubjectName.value.trim();
+    const color = elements.newSubjectColor.value;
+    
+    if (!name) {
+        elements.subjectNameError.textContent = 'Please enter a subject name.';
+        elements.newSubjectName.focus();
+        return;
+    }
+    
+    // Check if subject already exists
+    const existing = AppState.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+        elements.subjectNameError.textContent = 'A subject with this name already exists.';
+        elements.newSubjectName.focus();
+        return;
+    }
+    
+    // Create new subject
+    const newSubject = {
+        id: generateId(),
+        name: name,
+        color: color
+    };
+    
+    AppState.subjects.push(newSubject);
+    saveData();
+    
+    // Update UI
+    renderSubjectDropdowns();
+    renderSubjectsList();
+    clearSubjectForm();
+    
+    // Show success message
+    showTemporaryMessage('Subject added successfully!', 'success');
+}
+
+// Clear subject form
+function clearSubjectForm() {
+    elements.subjectForm.reset();
+    elements.subjectNameError.textContent = '';
+    elements.newSubjectName.focus();
+}
+
+// Render subjects list
+function renderSubjectsList() {
+    if (AppState.subjects.length === 0) {
+        elements.noSubjectsMessage.style.display = 'block';
+        elements.subjectsContainer.innerHTML = '';
+        return;
+    }
+    
+    elements.noSubjectsMessage.style.display = 'none';
+    
+    elements.subjectsContainer.innerHTML = AppState.subjects.map(subject => {
+        const cardCount = AppState.flashcards.filter(card => card.subject === subject.id).length;
+        
+        return `
+        <li class="subject-item">
+            <div class="subject-color-preview" style="background-color: ${subject.color}"></div>
+            <div class="subject-info">
+                <span class="subject-name">${escapeHtml(subject.name)}</span>
+                <span class="subject-card-count">${cardCount} card${cardCount !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="subject-actions">
+                <button class="subject-edit-btn" data-id="${subject.id}" aria-label="Edit subject ${escapeHtml(subject.name)}">Edit</button>
+                <button class="subject-delete-btn" data-id="${subject.id}" aria-label="Delete subject ${escapeHtml(subject.name)}">Delete</button>
+            </div>
+        </li>
+    `}).join('');
+    
+    // Add event listeners
+    document.querySelectorAll('.subject-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSubject(btn.dataset.id);
+        });
+    });
+    
+    document.querySelectorAll('.subject-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editSubject(btn.dataset.id);
+        });
+    });
+}
+
+// Delete a subject
+function deleteSubject(id) {
+    const subject = getSubjectById(id);
+    if (!subject) return;
+    
+    // Check if subject has cards
+    const cardCount = AppState.flashcards.filter(card => card.subject === id).length;
+    
+    let message = `Are you sure you want to delete "${subject.name}"?`;
+    if (cardCount > 0) {
+        message += `\n\nThis subject has ${cardCount} flashcard${cardCount !== 1 ? 's' : ''}. `;
+        message += `The cards will be moved to "${AppState.subjects.length > 1 ? AppState.subjects.find(s => s.id !== id).name : 'General'}".`;
+    }
+    
+    if (confirm(message)) {
+        // Move cards to another subject (if any) or remove subject reference
+        if (cardCount > 0) {
+            const otherSubject = AppState.subjects.find(s => s.id !== id);
+            if (otherSubject) {
+                AppState.flashcards.forEach(card => {
+                    if (card.subject === id) {
+                        card.subject = otherSubject.id;
+                    }
+                });
+            } else {
+                // If this is the only subject, remove subject from cards
+                AppState.flashcards.forEach(card => {
+                    if (card.subject === id) {
+                        card.subject = '';
+                    }
+                });
+            }
+        }
+        
+        // Remove the subject
+        AppState.subjects = AppState.subjects.filter(s => s.id !== id);
+        
+        // If no subjects left, create a default one
+        if (AppState.subjects.length === 0) {
+            AppState.subjects.push({
+                id: generateId(),
+                name: 'General',
+                color: '#0056b3'
+            });
+        }
+        
+        saveData();
+        renderSubjectDropdowns();
+        renderSubjectsList();
+        renderCardList();
+        updateUI();
+        
+        showTemporaryMessage('Subject deleted.', 'info');
+    }
+}
+
+// Edit a subject
+function editSubject(id) {
+    const subject = getSubjectById(id);
+    if (!subject) return;
+    
+    const newName = prompt('Edit subject name:', subject.name);
+    if (newName === null) return; // User cancelled
+    
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+        showTemporaryMessage('Subject name cannot be empty.', 'error');
+        return;
+    }
+    
+    // Check if name already exists
+    const existing = AppState.subjects.some(s => s.id !== id && s.name.toLowerCase() === trimmedName.toLowerCase());
+    if (existing) {
+        showTemporaryMessage('A subject with this name already exists.', 'error');
+        return;
+    }
+    
+    // Update subject
+    subject.name = trimmedName;
+    saveData();
+    
+    renderSubjectDropdowns();
+    renderSubjectsList();
+    renderCardList();
+    
+    showTemporaryMessage('Subject updated.', 'success');
 }
 
 // Export flashcards
 function exportFlashcards() {
     const data = {
         flashcards: AppState.flashcards,
+        subjects: AppState.subjects,
         boxes: AppState.boxes,
         version: '1.0',
         exportedAt: new Date().toISOString()
@@ -529,12 +886,32 @@ function importFlashcards() {
                 throw new Error('Invalid file format: flashcards array not found');
             }
             
+            // Import subjects if they exist
+            if (Array.isArray(data.subjects)) {
+                const existingSubjectNames = new Set(AppState.subjects.map(s => s.name.toLowerCase()));
+                const newSubjects = [];
+                
+                data.subjects.forEach(subject => {
+                    if (subject.name && !existingSubjectNames.has(subject.name.toLowerCase())) {
+                        newSubjects.push({
+                            id: subject.id || generateId(),
+                            name: subject.name,
+                            color: subject.color || '#0056b3'
+                        });
+                        existingSubjectNames.add(subject.name.toLowerCase());
+                    }
+                });
+                
+                AppState.subjects = [...AppState.subjects, ...newSubjects];
+            }
+            
             // Import flashcards
             const importedCards = data.flashcards.map(card => ({
                 id: card.id || generateId(),
                 question: card.question || '',
                 answer: card.answer || '',
-                box: Math.min(Math.max(card.box || 0, 0), AppState.boxes.length - 1)
+                box: Math.min(Math.max(card.box || 0, 0), AppState.boxes.length - 1),
+                subject: card.subject || ''
             }));
             
             // Check if we should also import boxes configuration
@@ -552,12 +929,13 @@ function importFlashcards() {
             const newCards = importedCards.filter(card => !existingIds.has(card.id));
             
             AppState.flashcards = [...AppState.flashcards, ...newCards];
-            saveFlashcards();
+            saveData();
             
             elements.importMessage.textContent = `Successfully imported ${newCards.length} flashcard${newCards.length !== 1 ? 's' : ''}.`;
             elements.importMessage.className = 'info-message success';
             
             // Update UI
+            renderSubjectDropdowns();
             renderCardList();
             updateUI();
             
@@ -627,7 +1005,8 @@ function handleKeyboardShortcuts(e) {
     if (e.key === 'Escape') {
         if (AppState.currentMode === 'review' && AppState.currentBox !== null) {
             resetReview();
-            switchMode('review');
+            AppState.currentBox = null;
+            updateReviewUI();
         }
     }
     

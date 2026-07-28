@@ -196,6 +196,7 @@ h3 {
     font-size: var(--font-size-medium);
 }
 
+.form-group select,
 .form-group textarea,
 .form-group input[type="text"],
 .form-group input[type="file"] {
@@ -210,6 +211,7 @@ h3 {
     color: var(--text-color);
 }
 
+.form-group select:focus,
 .form-group textarea:focus,
 .form-group input:focus {
     outline: none;
@@ -217,6 +219,7 @@ h3 {
     box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
 }
 
+.form-group select::placeholder,
 .form-group textarea::placeholder,
 .form-group input::placeholder {
     color: var(--dark-gray);
@@ -338,6 +341,8 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-small);
+    flex-wrap: wrap;
+    gap: var(--spacing-small);
 }
 
 .card-item .card-question {
@@ -366,12 +371,23 @@ button:disabled {
 .card-item .box-1 { background-color: var(--box2-color); }
 .card-item .box-2 { background-color: var(--box3-color); }
 
+.card-item .subject-tag {
+    display: inline-block;
+    padding: var(--spacing-small) var(--spacing-medium);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    color: white;
+    background-color: var(--primary-color);
+}
+
 .card-item .delete-btn {
     background: transparent;
     color: var(--error-color);
     border: 1px solid var(--error-color);
     padding: var(--spacing-small);
     font-size: var(--font-size-small);
+    margin-left: auto;
 }
 
 .card-item .delete-btn:hover {
@@ -379,11 +395,53 @@ button:disabled {
     color: white;
 }
 
-/* Box Selector */
-.box-selector {
+/* Subject Filter */
+.subject-filter {
+    margin-bottom: var(--spacing-large);
+}
+
+.subject-filter select {
+    width: 100%;
+    max-width: 300px;
+    padding: var(--spacing-medium);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-medium);
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* Review Filters */
+.review-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-large);
     margin-bottom: var(--spacing-xl);
 }
 
+.filter-group {
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-medium);
+}
+
+.filter-group h3 {
+    margin-bottom: var(--spacing-medium);
+    color: var(--primary-color);
+}
+
+.filter-group select {
+    width: 100%;
+    padding: var(--spacing-medium);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-medium);
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* Box Selector */
 .boxes {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -466,6 +524,17 @@ button:disabled {
     justify-content: center;
 }
 
+.subject-tag {
+    display: inline-block;
+    padding: var(--spacing-small) var(--spacing-medium);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    color: white;
+    background-color: var(--primary-color);
+    margin-top: var(--spacing-small);
+}
+
 .card-actions {
     display: flex;
     justify-content: center;
@@ -485,6 +554,101 @@ button:disabled {
 
 .progress.hidden {
     display: none;
+}
+
+/* Subjects Management */
+.subjects-management {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.add-subject-form {
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-large);
+}
+
+.add-subject-form h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-medium);
+}
+
+.subjects-list {
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-large);
+}
+
+.subjects-list h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-medium);
+}
+
+.subjects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--spacing-medium);
+    list-style: none;
+}
+
+.subject-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-medium);
+    transition: var(--transition);
+}
+
+.subject-item:hover {
+    box-shadow: var(--box-shadow);
+}
+
+.subject-color-preview {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: var(--spacing-small);
+    flex-shrink: 0;
+}
+
+.subject-info {
+    flex-grow: 1;
+}
+
+.subject-name {
+    font-weight: 600;
+    font-size: var(--font-size-medium);
+}
+
+.subject-card-count {
+    font-size: var(--font-size-small);
+    color: var(--dark-gray);
+}
+
+.subject-actions {
+    display: flex;
+    gap: var(--spacing-small);
+}
+
+.subject-actions button {
+    padding: var(--spacing-small);
+    font-size: var(--font-size-small);
+}
+
+.subject-edit-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.subject-delete-btn {
+    background-color: var(--error-color);
+    color: white;
 }
 
 /* Import/Export */
@@ -553,6 +717,14 @@ footer p {
     .import-export-container {
         grid-template-columns: 1fr;
     }
+    
+    .subjects-management {
+        grid-template-columns: 1fr;
+    }
+    
+    .review-filters {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Print Styles */
@@ -568,7 +740,10 @@ footer p {
     button,
     .form-group,
     .form-actions,
-    .import-export-container {
+    .import-export-container,
+    .subjects-management,
+    .subject-filter,
+    .review-filters {
         display: none !important;
     }
     

@@ -19,6 +19,7 @@
         <ul>
             <li><button id="mode-create" aria-pressed="true" class="active">Create Cards</button></li>
             <li><button id="mode-review" aria-pressed="false">Review Cards</button></li>
+            <li><button id="mode-subjects" aria-pressed="false">Manage Subjects</button></li>
             <li><button id="import-export" aria-pressed="false">Import/Export</button></li>
         </ul>
     </nav>
@@ -28,6 +29,15 @@
         <section id="create-section" aria-labelledby="create-heading" class="section active">
             <h2 id="create-heading">Create New Flashcard</h2>
             <form id="card-form" aria-labelledby="create-heading">
+                <div class="form-group">
+                    <label for="subject-select">Subject:</label>
+                    <select id="subject-select" name="subject" required aria-required="true" aria-describedby="subject-help">
+                        <option value="" disabled selected>Select a subject</option>
+                    </select>
+                    <span id="subject-help" class="help-text">Choose a subject to group this card with</span>
+                    <span id="subject-error" class="error-message" role="alert" aria-live="assertive"></span>
+                </div>
+                
                 <div class="form-group">
                     <label for="question">Question:</label>
                     <textarea id="question" name="question" rows="3" required aria-required="true" placeholder="Enter your question here"></textarea>
@@ -48,6 +58,12 @@
 
             <div id="card-list" aria-live="polite">
                 <h3>Your Flashcards</h3>
+                <div id="subject-filter" class="subject-filter">
+                    <label for="filter-subject">Filter by Subject:</label>
+                    <select id="filter-subject">
+                        <option value="all">All Subjects</option>
+                    </select>
+                </div>
                 <p id="no-cards" class="info-message">No flashcards created yet. Add some using the form above.</p>
                 <ul id="cards-container" class="cards-grid"></ul>
             </div>
@@ -57,33 +73,43 @@
         <section id="review-section" aria-labelledby="review-heading" class="section">
             <h2 id="review-heading">Review Flashcards</h2>
             
-            <div id="box-selector" class="box-selector">
-                <h3>Select Box to Review</h3>
-                <div class="boxes">
-                    <button class="box-button" data-box="0" aria-label="Review Box 1: Daily review">
-                        <span class="box-name">Box 1</span>
-                        <span class="box-desc">Daily</span>
-                        <span class="card-count" data-count="0">0 cards</span>
-                    </button>
-                    <button class="box-button" data-box="1" aria-label="Review Box 2: Every 2 days">
-                        <span class="box-name">Box 2</span>
-                        <span class="box-desc">Every 2 days</span>
-                        <span class="card-count" data-count="0">0 cards</span>
-                    </button>
-                    <button class="box-button" data-box="2" aria-label="Review Box 3: Every 4 days">
-                        <span class="box-name">Box 3</span>
-                        <span class="box-desc">Every 4 days</span>
-                        <span class="card-count" data-count="0">0 cards</span>
-                    </button>
+            <div class="review-filters">
+                <div class="filter-group">
+                    <h3>Select Box to Review</h3>
+                    <div class="boxes">
+                        <button class="box-button" data-box="0" aria-label="Review Box 1: Daily review">
+                            <span class="box-name">Box 1</span>
+                            <span class="box-desc">Daily</span>
+                            <span class="card-count" data-count="0">0 cards</span>
+                        </button>
+                        <button class="box-button" data-box="1" aria-label="Review Box 2: Every 2 days">
+                            <span class="box-name">Box 2</span>
+                            <span class="box-desc">Every 2 days</span>
+                            <span class="card-count" data-count="0">0 cards</span>
+                        </button>
+                        <button class="box-button" data-box="2" aria-label="Review Box 3: Every 4 days">
+                            <span class="box-name">Box 3</span>
+                            <span class="box-desc">Every 4 days</span>
+                            <span class="card-count" data-count="0">0 cards</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <h3>Filter by Subject</h3>
+                    <select id="review-subject-filter" aria-label="Select subject to review">
+                        <option value="all">All Subjects</option>
+                    </select>
                 </div>
             </div>
 
             <div id="review-area" class="review-area" aria-live="polite">
-                <p id="no-cards-review" class="info-message">Select a box to start reviewing.</p>
+                <p id="no-cards-review" class="info-message">Select a box and subject to start reviewing.</p>
                 
                 <div id="review-card" class="review-card hidden" role="region" aria-label="Flashcard review">
                     <div class="card-front" aria-label="Question side">
                         <p id="review-question"></p>
+                        <p id="review-subject-display" class="subject-tag"></p>
                         <div class="card-actions">
                             <button id="show-answer" class="primary">Show Answer</button>
                         </div>
@@ -100,6 +126,46 @@
 
                 <div id="review-progress" class="progress hidden">
                     <p>Card <span id="current-card">1</span> of <span id="total-cards">1</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Manage Subjects Section -->
+        <section id="subjects-section" aria-labelledby="subjects-heading" class="section">
+            <h2 id="subjects-heading">Manage Subjects</h2>
+            
+            <div class="subjects-management">
+                <div class="add-subject-form">
+                    <h3>Add New Subject</h3>
+                    <form id="subject-form">
+                        <div class="form-group">
+                            <label for="new-subject-name">Subject Name:</label>
+                            <input type="text" id="new-subject-name" name="subject-name" required aria-required="true" placeholder="e.g., Math, Science, History">
+                            <span id="subject-name-error" class="error-message" role="alert" aria-live="assertive"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-subject-color">Subject Color:</label>
+                            <select id="new-subject-color" name="subject-color">
+                                <option value="#ff6b6b">Red</option>
+                                <option value="#48dbfb">Blue</option>
+                                <option value="#06d6a0">Green</option>
+                                <option value="#feca57">Yellow</option>
+                                <option value="#ff9ff3">Pink</option>
+                                <option value="#5f27cd">Purple</option>
+                                <option value="#54a0ff">Light Blue</option>
+                                <option value="#5f27cd">Violet</option>
+                                <option value="#1dd1a1">Turquoise</option>
+                                <option value="#f368e0">Magenta</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="add-subject-btn" class="primary">Add Subject</button>
+                    </form>
+                </div>
+                
+                <div class="subjects-list">
+                    <h3>Your Subjects</h3>
+                    <p id="no-subjects" class="info-message">No subjects created yet. Add one above.</p>
+                    <ul id="subjects-container" class="subjects-grid"></ul>
                 </div>
             </div>
         </section>
