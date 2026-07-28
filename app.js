@@ -392,8 +392,9 @@ function updateReviewUI() {
     // Show the current card
     const currentCard = AppState.reviewCards[AppState.currentCardIndex];
     
+    // Only populate the question initially - answer will be added when shown
     elements.reviewQuestion.textContent = currentCard.question;
-    elements.reviewAnswer.textContent = currentCard.answer;
+    elements.reviewAnswer.textContent = '';
     
     // Reset to question side
     AppState.showingAnswer = false;
@@ -412,6 +413,11 @@ function updateReviewUI() {
 
 // Show the answer
 function showAnswer() {
+    const currentCard = AppState.reviewCards[AppState.currentCardIndex];
+    
+    // Only populate the answer now
+    elements.reviewAnswer.textContent = currentCard.answer;
+    
     AppState.showingAnswer = true;
     elements.cardFront.classList.add('hidden');
     elements.cardBack.classList.remove('hidden');
@@ -467,6 +473,9 @@ function resetReview() {
     elements.reviewCard.classList.add('hidden');
     elements.reviewProgress.classList.add('hidden');
     elements.noCardsReview.style.display = 'block';
+    
+    // Clear the answer content
+    elements.reviewAnswer.textContent = '';
 }
 
 // Export flashcards
@@ -631,6 +640,7 @@ function handleKeyboardShortcuts(e) {
             AppState.showingAnswer = false;
             elements.cardFront.classList.remove('hidden');
             elements.cardBack.classList.add('hidden');
+            elements.reviewAnswer.textContent = '';
         } else if (e.key === 'ArrowUp' && AppState.showingAnswer) {
             handleReviewResponse(true);
         } else if (e.key === 'ArrowDown' && AppState.showingAnswer) {
